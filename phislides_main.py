@@ -10,8 +10,15 @@ parser.add_argument(
     type=str,
     help="Base folder containing slides.yaml, slides, and interactive_functions folders",
 )
+parser.add_argument(
+        "--resolution",
+        type=str,
+        default="1600x800",
+        help="Resolution to resize the background images (format: WIDTHxHEIGHT, e.g., 1800x900)",
+    )
 args = parser.parse_args()
 base_folder = args.base_folder
+resolution = tuple(map(int, args.resolution.split('x')))
 
 if not os.path.isdir(base_folder):
     raise FileNotFoundError(f"Base folder '{base_folder}' not found.")
@@ -32,7 +39,7 @@ for slide in slide_config:
     if not os.path.exists(img_slide_path):
         raise FileNotFoundError(f"Slide image '{img_slide_path}' not found.")
     bg_img = cv2.imread(img_slide_path)
-    bg_img = cv2.resize(bg_img, (1800, 900), interpolation=cv2.INTER_LANCZOS4)
+    bg_img = cv2.resize(bg_img, resolution, interpolation=cv2.INTER_LANCZOS4)
     background_images.append(bg_img)
 
     frames = []
@@ -51,7 +58,7 @@ for slide in slide_config:
                     module_path = os.path.join(interactive_functions_folder, module_name + ".py")
                     if not os.path.exists(module_path):
                         raise FileNotFoundError(f"Function file '{module_path}' not found.")
-                    module = importlib.import_module(f"{base_folder}.interactive_functions.{module_name}")
+                    module = importlib.import_module(f".{module_name}", f"{base_folder}.interactive_functions")
                     process_func = getattr(module, func_name)
                     frames.append({"type": "function", "func": process_func})
                 except Exception as e:

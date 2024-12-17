@@ -4,6 +4,7 @@ import numpy as np
 import os
 import yaml
 import argparse
+from tqdm import tqdm
 
 def pdf_to_slides_with_yaml(pdf_path, output_dir, output_resolution=(2000, 1000)):
     os.makedirs(output_dir, exist_ok=True)
@@ -18,13 +19,15 @@ def pdf_to_slides_with_yaml(pdf_path, output_dir, output_resolution=(2000, 1000)
         script_file.write("def process_frame(frame):\n    return frame")
     slides_yaml = []
 
-    
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
-    parameters =  cv2.aruco.DetectorParameters()
+    parameters = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(dictionary, parameters)
 
     pdf_document = pymupdf.open(pdf_path)
-    for page_number in range(len(pdf_document)):
+    total_pages = len(pdf_document)
+
+    # Use tqdm to display progress
+    for page_number in tqdm(range(total_pages), desc="Converting slides"):
         page = pdf_document.load_page(page_number)
         pix = page.get_pixmap(matrix=pymupdf.Matrix(output_resolution[0] / page.rect.width, 
                                                  output_resolution[1] / page.rect.height))
@@ -76,10 +79,36 @@ def pdf_to_slides_with_yaml(pdf_path, output_dir, output_resolution=(2000, 1000)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert PDF to slides with YAML configuration.")
-    parser.add_argument("pdf_path", type=str, help="Path to the input PDF file.")
-    parser.add_argument("--output_dir", type=str, default="output_slides", help="Directory to save PNGs and YAML (default: output_slides).")
-    parser.add_argument("--output_resolution", type=tuple, default=(1800, 900), help="Desired resolution for the slides (default: (2000, 1000)).")
+    parser.add_argument("--pdf_path", type=str, help="Path to the input PDF file.")
+    parser.add_argument("--output_dir", type=str, help="Directory to save PNGs and YAML.")
+    parser.add_argument("--output_resolution", type=str, help="Desired resolution for the slides, e.g., 1600x800.")
     
     args = parser.parse_args()
     
-    pdf_to_slides_with_yaml(args.pdf_path, args.output_dir, args.output_resolution)
+    # Prompt for PDF path
+    if not args.pdf_path:
+        args.pdf_path = input("Please enter the path to the PDF file: ").strip()
+    
+    # Prompt for output directory
+    if not args.output_dir:
+        args.output_dir = input("Please enter the output folder name (default: output_slides): ").strip()
+        if not args.output_dir:
+            args.output_dir = "output_slides"
+    
+    # Prompt for resolution
+    if not args.output_resolution:
+        resolution_input = input("Enter resolution (e.g., 1600x800, default: 1600x800): ").strip()
+        if not resolution_input:
+            resolution_input = "1600x800"
+    else:
+        resolution_input = args.output_resolution
+    
+    # Parse resolution input
+    try:
+        resolution = tuple(map(int, resolution_input.lower().split("x")))
+    except ValueError:
+        print("Invalid resolution format. Using default (1600x800).")
+        resolution = (1600, 800)
+    
+    # Run the conversion function
+    pdf_to_slides_with_yaml(args.pdf_path, args.output_dir, resolution)
